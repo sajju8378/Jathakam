@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { BirthChartRequest, GeocodedPlace, AstroSettings } from '../types/astro';
 import { searchCitiesLocally, POPULAR_CITIES } from '../utils/cities';
+import { searchPlacesGlobally, resolvePlaceCoordinates } from '../utils/geocoding';
 import { isStaticDeployment } from '../utils/environment';
 import {
   MapPin,
@@ -15,7 +16,8 @@ import {
   RotateCcw,
   Sliders,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Loader2
 } from 'lucide-react';
 
 interface Props {
@@ -195,49 +197,35 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
     }
 
     if (val.trim().length >= 1) {
-      // 1. Instant local database lookup (zero-latency offline & GitHub Pages support)
+      // 1. Instant local database lookup (zero-latency for Korutla, Metpally, and hundreds of towns)
       const localMatches = searchCitiesLocally(val);
       if (localMatches.length > 0) {
         setPlaceResults(localMatches);
         setShowDropdown(true);
       }
 
-      // If static deployment (GitHub Pages), do NOT try backend /v1/geocode to prevent network errors
-      if (isStaticDeployment()) {
-        return;
-      }
-
+      // 2. Global search across all towns & villages (Open-Meteo + Nominatim) with 200ms debounce
       setIsSearchingPlaces(true);
       searchTimeoutRef.current = setTimeout(async () => {
         try {
-          let results: GeocodedPlace[] = [];
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 1500);
-            const res = await fetch(`/v1/geocode?q=${encodeURIComponent(val)}`, {
-              signal: controller.signal,
-            });
-            clearTimeout(timeoutId);
-            if (res.ok) {
-              const data = await res.json();
-              results = data.results || [];
-            }
-          } catch {
-            // Static or offline fallback to local matches
-            results = localMatches;
-          }
-
-          if (results.length > 0) {
-            setPlaceResults(results);
+          const globalResults = await searchPlacesGlobally(val);
+          if (globalResults.length > 0) {
+            setPlaceResults(globalResults);
             setShowDropdown(true);
           } else if (localMatches.length > 0) {
+            setPlaceResults(localMatches);
+            setShowDropdown(true);
+          }
+        } catch (err) {
+          console.debug('Place search error:', err);
+          if (localMatches.length > 0) {
             setPlaceResults(localMatches);
             setShowDropdown(true);
           }
         } finally {
           setIsSearchingPlaces(false);
         }
-      }, 300);
+      }, 200);
     } else {
       setPlaceResults([]);
       setShowDropdown(false);
@@ -312,6 +300,10 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
         finalLat = matches[0].latitude;
         finalLon = matches[0].longitude;
         finalTz = matches[0].timezone;
+      } else if (placeResults.length > 0) {
+        finalLat = placeResults[0].latitude;
+        finalLon = placeResults[0].longitude;
+        finalTz = placeResults[0].timezone;
       }
     }
 
@@ -469,30 +461,54 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
                 onChange={handlePlaceChange}
                 onFocus={() => placeResults.length > 0 && setShowDropdown(true)}
                 className="w-full pl-3 pr-8 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-100 focus:outline-none focus:border-amber-500 font-medium"
-                placeholder="Search city / town..."
+                placeholder="Enter any town (e.g. Korutla, Metpally, Jagtial...)"
                 required
               />
-              <Search className="w-4 h-4 text-slate-500 absolute right-2.5 top-2.5 pointer-events-none" />
+              {isSearchingPlaces ? (
+                <Loader2 className="w-4 h-4 text-amber-400 absolute right-2.5 top-2.5 animate-spin pointer-events-none" />
+              ) : (
+                <Search className="w-4 h-4 text-slate-500 absolute right-2.5 top-2.5 pointer-events-none" />
+              )}
             </div>
 
             {/* Geocode Results Dropdown */}
-            {showDropdown && placeResults.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-xl border border-slate-800 bg-slate-950 shadow-2xl max-h-56 overflow-y-auto divide-y divide-slate-800">
+            {showDropdown && (placeResults.length > 0 || isSearchingPlaces) && (
+              <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-xl border border-slate-800 bg-slate-950 shadow-2xl max-h-60 overflow-y-auto divide-y divide-slate-800">
+                {isSearchingPlaces && placeResults.length === 0 && (
+                  <div className="p-3 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                    <span>Searching global towns and cities...</span>
+                  </div>
+                )}
                 {placeResults.map((p, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => selectPlace(p)}
-                    className="w-full px-3 py-2.5 text-left text-xs text-slate-300 hover:bg-slate-900 transition-colors cursor-pointer flex flex-col"
+                    className="w-full px-3 py-2.5 text-left text-xs text-slate-300 hover:bg-slate-900 transition-colors cursor-pointer flex flex-col gap-0.5"
                   >
-                    <span className="font-semibold text-slate-100">{p.display_name}</span>
-                    <span className="text-[10px] text-slate-500 font-mono">
-                      {p.latitude.toFixed(2)}°N, {p.longitude.toFixed(2)}°E • {p.timezone}
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-100 flex items-center gap-1.5">
+                        <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
+                        {p.city}
+                      </span>
+                      {p.state && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
+                          {p.state}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-slate-400 pl-4">{p.display_name}</span>
+                    <span className="text-[10px] text-slate-500 font-mono pl-4">
+                      {p.latitude.toFixed(4)}°N, {p.longitude.toFixed(4)}°E • {p.timezone}
                     </span>
                   </button>
                 ))}
               </div>
             )}
+            <p className="text-[10px] text-slate-500">
+              Type any city, town or mandal name. All towns across India and worldwide are supported.
+            </p>
           </div>
         </div>
 

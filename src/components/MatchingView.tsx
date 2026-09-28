@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MatchResult, BirthChartRequest } from '../types/astro';
 import { computeMatchClientSide } from '../utils/clientAstroEngine';
 import { isStaticDeployment, safeFetchWithTimeout } from '../utils/environment';
+import { searchCitiesLocally } from '../utils/cities';
 import { Heart, Users, CheckCircle2, AlertTriangle, Sparkles } from 'lucide-react';
 
 interface Props {
@@ -85,9 +86,26 @@ export const MatchingView: React.FC<Props> = ({ currentChartRequest }) => {
     setLoading(true);
     setError(null);
 
+    // Resolve coordinates if missing or place was modified
+    const resolvedBoy = { ...boy };
+    if (!Number.isFinite(resolvedBoy.latitude) || !Number.isFinite(resolvedBoy.longitude)) {
+      const bMatches = searchCitiesLocally(resolvedBoy.place || '');
+      resolvedBoy.latitude = bMatches[0]?.latitude ?? 28.6139;
+      resolvedBoy.longitude = bMatches[0]?.longitude ?? 77.2090;
+      resolvedBoy.timezone = bMatches[0]?.timezone ?? 'Asia/Kolkata';
+    }
+
+    const resolvedGirl = { ...girl };
+    if (!Number.isFinite(resolvedGirl.latitude) || !Number.isFinite(resolvedGirl.longitude)) {
+      const gMatches = searchCitiesLocally(resolvedGirl.place || '');
+      resolvedGirl.latitude = gMatches[0]?.latitude ?? 19.0760;
+      resolvedGirl.longitude = gMatches[0]?.longitude ?? 72.8777;
+      resolvedGirl.timezone = gMatches[0]?.timezone ?? 'Asia/Kolkata';
+    }
+
     if (isStaticDeployment()) {
       try {
-        const clientRes = computeMatchClientSide(boy, girl);
+        const clientRes = computeMatchClientSide(resolvedBoy, resolvedGirl);
         setResult(clientRes);
       } catch (cErr: any) {
         setError(cErr.message || 'Error computing compatibility');
@@ -103,7 +121,7 @@ export const MatchingView: React.FC<Props> = ({ currentChartRequest }) => {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ boy_chart: boy, girl_chart: girl })
+          body: JSON.stringify({ boy_chart: resolvedBoy, girl_chart: resolvedGirl })
         },
         1800
       );

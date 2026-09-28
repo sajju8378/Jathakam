@@ -15,6 +15,7 @@ import { YogasAndDoshasView } from './components/YogasAndDoshas';
 import { InterpretationsTab } from './components/InterpretationsTab';
 import { PanchangView } from './components/PanchangView';
 import { MatchingView } from './components/MatchingView';
+import { LifePredictionsView } from './components/LifePredictionsView';
 import { SettingsModal } from './components/SettingsModal';
 import { PrivacyModal } from './components/PrivacyModal';
 import { exportKundliPDF } from './utils/pdfExport';
@@ -30,7 +31,8 @@ import {
   Sun,
   Flame,
   Check,
-  UserPlus
+  UserPlus,
+  BookOpen
 } from 'lucide-react';
 
 export default function App() {
@@ -292,10 +294,11 @@ export default function App() {
             <div className="flex items-center gap-2 border-b border-slate-800/80 overflow-x-auto pb-1">
               {[
                 { id: 'chart', label: 'Kundli Charts', icon: Sparkles },
-                { id: 'planets', label: 'Planets Table', icon: Sun },
+                { id: 'predictions', label: 'Life Predictions (Past • Present • Future)', icon: Compass },
                 { id: 'dashas', label: 'Vimshottari Dasha', icon: Moon },
+                { id: 'planets', label: 'Planets Table', icon: Sun },
                 { id: 'yogas', label: 'Yogas & Doshas', icon: Flame },
-                { id: 'interpretations', label: 'Interpretations', icon: Compass },
+                { id: 'interpretations', label: 'Interpretations', icon: BookOpen },
                 { id: 'panchang', label: 'Daily Panchang', icon: Sun },
                 { id: 'matching', label: 'Kundli Milan (36 Gunas)', icon: Sparkles },
               ].map((tab) => {
@@ -500,6 +503,11 @@ export default function App() {
                   setActiveTab('chart');
                 }}
               />
+            )}
+
+            {/* TAB CONTENT 2: LIFE PREDICTIONS (PAST, PRESENT, FUTURE) */}
+            {activeTab === 'predictions' && (
+              <LifePredictionsView chartData={chartData} />
             )}
 
             {/* TAB CONTENT 3: VIMSHOTTARI DASHA */}
