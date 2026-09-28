@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { BirthChartRequest, GeocodedPlace, AstroSettings } from '../types/astro';
-import { MapPin, Clock, Calendar, User, Search, Sparkles, CheckSquare, Square, Info } from 'lucide-react';
+import { MapPin, Clock, Calendar, User, Search, Sparkles, CheckSquare, Square, Zap, Check } from 'lucide-react';
 
 interface Props {
   onSubmit: (request: BirthChartRequest) => void;
@@ -9,6 +9,36 @@ interface Props {
 }
 
 const PRESETS = [
+  {
+    label: 'Rahul Sharma (Delhi)',
+    name: 'Rahul Sharma',
+    dob: '1995-10-24',
+    tob: '18:30',
+    place: 'New Delhi, Delhi, India',
+    latitude: 28.6139,
+    longitude: 77.2090,
+    timezone: 'Asia/Kolkata',
+  },
+  {
+    label: 'Priya Patel (Mumbai)',
+    name: 'Priya Patel',
+    dob: '1998-05-12',
+    tob: '08:45',
+    place: 'Mumbai, Maharashtra, India',
+    latitude: 19.0760,
+    longitude: 72.8777,
+    timezone: 'Asia/Kolkata',
+  },
+  {
+    label: 'Dr. A.P.J. Abdul Kalam',
+    name: 'APJ Abdul Kalam',
+    dob: '1931-10-15',
+    tob: '01:15',
+    place: 'Rameswaram, Tamil Nadu, India',
+    latitude: 9.2876,
+    longitude: 79.3129,
+    timezone: 'Asia/Kolkata',
+  },
   {
     label: 'Mahatma Gandhi',
     name: 'Mahatma Gandhi',
@@ -30,16 +60,6 @@ const PRESETS = [
     timezone: 'Asia/Kolkata',
   },
   {
-    label: 'Dr. A.P.J. Abdul Kalam',
-    name: 'APJ Abdul Kalam',
-    dob: '1931-10-15',
-    tob: '01:15',
-    place: 'Rameswaram, Tamil Nadu, India',
-    latitude: 9.2876,
-    longitude: 79.3129,
-    timezone: 'Asia/Kolkata',
-  },
-  {
     label: 'Indira Gandhi',
     name: 'Indira Gandhi',
     dob: '1917-11-19',
@@ -48,6 +68,16 @@ const PRESETS = [
     latitude: 25.4358,
     longitude: 81.8463,
     timezone: 'Asia/Kolkata',
+  },
+  {
+    label: 'Albert Einstein',
+    name: 'Albert Einstein',
+    dob: '1879-03-14',
+    tob: '11:30',
+    place: 'Ulm, Baden-Wurttemberg, Germany',
+    latitude: 48.4011,
+    longitude: 9.9876,
+    timezone: 'Europe/Berlin',
   },
   {
     label: 'New Delhi (Now)',
@@ -62,7 +92,7 @@ const PRESETS = [
 ];
 
 export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading }) => {
-  const [name, setName] = useState('Native');
+  const [name, setName] = useState('Rahul Sharma');
   const [dob, setDob] = useState('1995-10-24');
   const [tob, setTob] = useState('18:30');
   const [timeUnknown, setTimeUnknown] = useState(false);
@@ -120,19 +150,34 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading }) => {
     setShowDropdown(false);
   };
 
-  const applyPreset = (preset: typeof PRESETS[0]) => {
+  const applyPresetAndCompute = (preset: typeof PRESETS[0]) => {
     setName(preset.name);
     setDob(preset.dob);
     setTob(preset.tob);
     setTimeUnknown(false);
     setPlaceQuery(preset.place);
-    setSelectedPlace({
+    const placeObj: GeocodedPlace = {
       display_name: preset.place,
       city: preset.place.split(',')[0],
       country: 'India',
       latitude: preset.latitude,
       longitude: preset.longitude,
       timezone: preset.timezone,
+    };
+    setSelectedPlace(placeObj);
+
+    // Immediately trigger calculation for instant response
+    onSubmit({
+      name: preset.name,
+      dob: preset.dob,
+      tob: preset.tob,
+      place: preset.place,
+      latitude: preset.latitude,
+      longitude: preset.longitude,
+      timezone: preset.timezone,
+      time_unknown: false,
+      settings,
+      consent_given: true,
     });
   };
 
@@ -147,7 +192,7 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading }) => {
       name,
       dob,
       tob: timeUnknown ? null : tob,
-      place: selectedPlace.display_name,
+      place: selectedPlace.display_name || placeQuery,
       latitude: selectedPlace.latitude,
       longitude: selectedPlace.longitude,
       timezone: selectedPlace.timezone,
@@ -159,6 +204,7 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading }) => {
 
   return (
     <div className="w-full max-w-4xl mx-auto rounded-2xl border border-amber-500/20 bg-slate-900/80 backdrop-blur-md p-6 sm:p-8 shadow-2xl space-y-6">
+      {/* Header & Quick 1-Click Sample Fill */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
         <div>
           <h2 className="font-serif text-2xl font-bold text-slate-100 flex items-center gap-2">
@@ -170,15 +216,33 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading }) => {
           </p>
         </div>
 
-        {/* Quick Presets Dropdown/Buttons */}
+        <button
+          type="button"
+          onClick={() => applyPresetAndCompute(PRESETS[0])}
+          disabled={loading}
+          className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+        >
+          <Zap className="w-3.5 h-3.5" />
+          <span>Auto-Fill Sample & Generate</span>
+        </button>
+      </div>
+
+      {/* Preset Pill Bar: One click immediately fills and computes! */}
+      <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            One-Click Sample Profiles (Click any to load & compute instantly):
+          </span>
+        </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] text-slate-500 font-medium">Test Presets:</span>
           {PRESETS.map((p) => (
             <button
               key={p.label}
               type="button"
-              onClick={() => applyPreset(p)}
-              className="text-[11px] px-2.5 py-1 rounded-md bg-slate-800/80 hover:bg-amber-500 hover:text-slate-950 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
+              onClick={() => applyPresetAndCompute(p)}
+              disabled={loading}
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-amber-500 hover:text-slate-950 text-slate-300 border border-slate-700 hover:border-amber-400 transition-all cursor-pointer font-medium"
             >
               {p.label}
             </button>

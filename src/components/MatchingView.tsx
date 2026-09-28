@@ -67,8 +67,67 @@ export const MatchingView: React.FC<Props> = ({ currentChartRequest }) => {
     }
   };
 
+  const applyPairAndMatch = async (b: BirthChartRequest, g: BirthChartRequest) => {
+    setBoy(b);
+    setGirl(g);
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/v1/match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ boy_chart: b, girl_chart: g })
+      });
+      if (!res.ok) {
+        throw new Error(`Match calculation failed (${res.status})`);
+      }
+      const data = await res.json();
+      setResult(data);
+    } catch (err: any) {
+      setError(err.message || 'Error computing compatibility');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const SAMPLE_PAIRS = [
+    {
+      label: 'Sample: Favorable Match (28+ Gunas)',
+      boy: { name: 'Aarav (Groom)', dob: '1992-04-14', tob: '09:30', place: 'New Delhi', latitude: 28.6139, longitude: 77.2090, timezone: 'Asia/Kolkata', consent_given: true },
+      girl: { name: 'Ananya (Bride)', dob: '1994-08-20', tob: '15:45', place: 'Mumbai', latitude: 19.0760, longitude: 72.8777, timezone: 'Asia/Kolkata', consent_given: true }
+    },
+    {
+      label: 'Sample: Traditional Match (Kolkata & Varanasi)',
+      boy: { name: 'Vikram', dob: '1990-11-05', tob: '06:15', place: 'Kolkata', latitude: 22.5726, longitude: 88.3639, timezone: 'Asia/Kolkata', consent_given: true },
+      girl: { name: 'Pooja', dob: '1993-02-18', tob: '11:20', place: 'Varanasi', latitude: 25.3176, longitude: 82.9739, timezone: 'Asia/Kolkata', consent_given: true }
+    }
+  ];
+
   return (
     <div className="space-y-6">
+      {/* Sample Pairs Bar */}
+      <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-amber-400" />
+          <span className="text-xs font-semibold text-slate-200">
+            One-Click Matching Samples (Auto-enters values & matches):
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {SAMPLE_PAIRS.map((pair, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => applyPairAndMatch(pair.boy, pair.girl)}
+              disabled={loading}
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-amber-500 hover:text-slate-950 text-amber-300 border border-amber-500/30 transition-all font-medium cursor-pointer"
+            >
+              {pair.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Forms Section: Boy & Girl Birth Details */}
       <form onSubmit={handleMatch} className="space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

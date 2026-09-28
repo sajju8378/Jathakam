@@ -95,10 +95,18 @@ def compute_chart(req: BirthChartRequest) -> Dict[str, Any]:
     place_name = req.place or "Custom Location"
 
     if (lat is None or lon is None) and req.place:
-        # Synchronous fallback: New Delhi coordinates if geocoding not provided
-        lat = 28.6139
-        lon = 77.2090
-        tz_str = "Asia/Kolkata"
+        from .geocoding.nominatim import POPULAR_CITIES
+        p_lower = req.place.lower().strip()
+        matched = next((c for c in POPULAR_CITIES if c["city"].lower() in p_lower or p_lower in c["display_name"].lower() or p_lower in c["city"].lower()), None)
+        if matched:
+            lat = matched["latitude"]
+            lon = matched["longitude"]
+            tz_str = req.timezone or matched["timezone"]
+            place_name = matched["display_name"]
+        else:
+            lat = 28.6139
+            lon = 77.2090
+            tz_str = req.timezone or "Asia/Kolkata"
     elif lat is None or lon is None:
         lat = 28.6139
         lon = 77.2090
