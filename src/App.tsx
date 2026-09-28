@@ -18,6 +18,7 @@ import { MatchingView } from './components/MatchingView';
 import { SettingsModal } from './components/SettingsModal';
 import { PrivacyModal } from './components/PrivacyModal';
 import { exportKundliPDF } from './utils/pdfExport';
+import { computeChartClientSide } from './utils/clientAstroEngine';
 import {
   Sparkles,
   Download,
@@ -82,15 +83,21 @@ export default function App() {
       });
 
       if (!res.ok) {
-        const errJson = await res.json().catch(() => ({ detail: 'Chart generation failed' }));
-        throw new Error(errJson.detail || `Server returned ${res.status}`);
+        throw new Error(`Server returned ${res.status}`);
       }
 
       const data: BirthChartData = await res.json();
       setChartData(data);
       setActiveTab('chart');
     } catch (err: any) {
-      setError(err.message || 'Error computing birth chart');
+      console.warn('Backend /v1/chart unreachable (static deployment mode). Computing client-side...', err);
+      try {
+        const clientData = computeChartClientSide(req);
+        setChartData(clientData);
+        setActiveTab('chart');
+      } catch (clientErr: any) {
+        setError(clientErr.message || 'Error computing birth chart');
+      }
     } finally {
       setLoading(false);
     }
@@ -166,6 +173,7 @@ export default function App() {
               onSubmit={handleComputeChart}
               settings={settings}
               loading={loading}
+              initialRequest={currentRequest}
             />
           </div>
         )}

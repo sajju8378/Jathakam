@@ -1,11 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { BirthChartRequest, GeocodedPlace, AstroSettings } from '../types/astro';
+import { searchCitiesLocally } from '../utils/cities';
 import { MapPin, Clock, Calendar, User, Search, Sparkles, CheckSquare, Square, Zap, Check } from 'lucide-react';
 
 interface Props {
   onSubmit: (request: BirthChartRequest) => void;
   settings: AstroSettings;
   loading: boolean;
+  initialRequest?: BirthChartRequest | null;
 }
 
 const PRESETS = [
@@ -91,20 +93,20 @@ const PRESETS = [
   },
 ];
 
-export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading }) => {
-  const [name, setName] = useState('Rahul Sharma');
-  const [dob, setDob] = useState('1995-10-24');
-  const [tob, setTob] = useState('18:30');
-  const [timeUnknown, setTimeUnknown] = useState(false);
-  const [placeQuery, setPlaceQuery] = useState('New Delhi, Delhi, India');
+export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initialRequest }) => {
+  const [name, setName] = useState(initialRequest?.name || 'Dr. A.P.J. Abdul Kalam');
+  const [dob, setDob] = useState(initialRequest?.dob || '1931-10-15');
+  const [tob, setTob] = useState(initialRequest?.tob || '01:15');
+  const [timeUnknown, setTimeUnknown] = useState(initialRequest?.time_unknown || false);
+  const [placeQuery, setPlaceQuery] = useState(initialRequest?.place || 'Rameswaram, Tamil Nadu, India');
   const [selectedPlace, setSelectedPlace] = useState<GeocodedPlace>({
-    display_name: 'New Delhi, Delhi, India',
-    city: 'New Delhi',
-    state: 'Delhi',
+    display_name: initialRequest?.place || 'Rameswaram, Tamil Nadu, India',
+    city: 'Rameswaram',
+    state: 'Tamil Nadu',
     country: 'India',
-    latitude: 28.6139,
-    longitude: 77.2090,
-    timezone: 'Asia/Kolkata',
+    latitude: initialRequest?.latitude ?? 9.2876,
+    longitude: initialRequest?.longitude ?? 79.3129,
+    timezone: initialRequest?.timezone || 'Asia/Kolkata',
   });
 
   const [placeResults, setPlaceResults] = useState<GeocodedPlace[]>([]);
@@ -113,6 +115,26 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading }) => {
   const [consentGiven, setConsentGiven] = useState(true);
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync when initialRequest changes
+  useEffect(() => {
+    if (initialRequest) {
+      if (initialRequest.name) setName(initialRequest.name);
+      if (initialRequest.dob) setDob(initialRequest.dob);
+      if (initialRequest.tob !== undefined && initialRequest.tob !== null) setTob(initialRequest.tob);
+      if (initialRequest.place) {
+        setPlaceQuery(initialRequest.place);
+        setSelectedPlace({
+          display_name: initialRequest.place,
+          city: initialRequest.place.split(',')[0],
+          country: 'India',
+          latitude: initialRequest.latitude ?? 28.6139,
+          longitude: initialRequest.longitude ?? 77.2090,
+          timezone: initialRequest.timezone || 'Asia/Kolkata',
+        });
+      }
+    }
+  }, [initialRequest]);
 
   const handlePlaceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -123,17 +145,52 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading }) => {
     }
 
     if (val.trim().length >= 2) {
+      // 1. Instant local database lookup (zero-latency offline support)
+      const localMatches = searchCitiesLocally(val);
+      if (localMatches.length > 0) {
+        setPlaceResults(localMatches);
+        setShowDropdown(true);
+      }
+
       setIsSearchingPlaces(true);
       searchTimeoutRef.current = setTimeout(async () => {
         try {
-          const res = await fetch(`/v1/geocode?q=${encodeURIComponent(val)}`);
-          if (res.ok) {
-            const data = await res.json();
-            setPlaceResults(data.results || []);
+          // Attempt backend proxy first
+          let results: GeocodedPlace[] = [];
+          try {
+            const res = await fetch(`/v1/geocode?q=${encodeURIComponent(val)}`);
+            if (res.ok) {
+              const data = await res.json();
+              results = data.results || [];
+            }
+          } catch {
+            // Static deployment fallback to OpenStreetMap Nominatim directly
+            try {
+              const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&addressdetails=1&limit=5`);
+              if (res.ok) {
+                const items = await res.json();
+                results = items.map((item: any) => ({
+                  display_name: item.display_name,
+                  city: item.address?.city || item.address?.town || item.address?.village || item.display_name.split(',')[0],
+                  state: item.address?.state,
+                  country: item.address?.country,
+                  latitude: parseFloat(item.lat),
+                  longitude: parseFloat(item.lon),
+                  timezone: 'Asia/Kolkata',
+                }));
+              }
+            } catch {
+              // Ignore network error on static
+            }
+          }
+
+          if (results.length > 0) {
+            setPlaceResults(results);
+            setShowDropdown(true);
+          } else if (localMatches.length > 0) {
+            setPlaceResults(localMatches);
             setShowDropdown(true);
           }
-        } catch (err) {
-          console.error('Geocode search failed', err);
         } finally {
           setIsSearchingPlaces(false);
         }

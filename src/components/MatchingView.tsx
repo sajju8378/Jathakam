@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MatchResult, BirthChartRequest } from '../types/astro';
+import { computeMatchClientSide } from '../utils/clientAstroEngine';
 import { Heart, Users, CheckCircle2, AlertTriangle, Sparkles } from 'lucide-react';
 
 interface Props {
@@ -33,6 +34,37 @@ export const MatchingView: React.FC<Props> = ({ currentChartRequest }) => {
   const [result, setResult] = useState<MatchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    // Automatically pre-compute match on initial load so the user sees results immediately
+    let isMounted = true;
+    const runInitialMatch = async () => {
+      try {
+        const res = await fetch('/v1/match', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ boy_chart: boy, girl_chart: girl }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted) setResult(data);
+          return;
+        }
+      } catch {
+        // Fallback to client-side computation
+      }
+      try {
+        const clientRes = computeMatchClientSide(boy, girl);
+        if (isMounted) setResult(clientRes);
+      } catch (cErr: any) {
+        if (isMounted) setError(cErr.message || 'Error computing compatibility');
+      }
+    };
+    runInitialMatch();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -49,7 +81,13 @@ export const MatchingView: React.FC<Props> = ({ currentChartRequest }) => {
       const data = await res.json();
       setResult(data);
     } catch (err: any) {
-      setError(err.message || 'Error computing compatibility');
+      console.warn('Backend /v1/match unreachable. Computing client-side...', err);
+      try {
+        const clientRes = computeMatchClientSide(boy, girl);
+        setResult(clientRes);
+      } catch (cErr: any) {
+        setError(cErr.message || 'Error computing compatibility');
+      }
     } finally {
       setLoading(false);
     }
@@ -84,7 +122,13 @@ export const MatchingView: React.FC<Props> = ({ currentChartRequest }) => {
       const data = await res.json();
       setResult(data);
     } catch (err: any) {
-      setError(err.message || 'Error computing compatibility');
+      console.warn('Backend /v1/match unreachable. Computing client-side...', err);
+      try {
+        const clientRes = computeMatchClientSide(b, g);
+        setResult(clientRes);
+      } catch (cErr: any) {
+        setError(cErr.message || 'Error computing compatibility');
+      }
     } finally {
       setLoading(false);
     }
