@@ -37,7 +37,7 @@ export default defineConfig(() => {
     plugins: [serveDevHtmlPlugin(), react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname || '.', '.'),
       },
     },
     server: {

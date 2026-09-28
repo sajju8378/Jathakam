@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MatchResult, BirthChartRequest } from '../types/astro';
 import { computeMatchClientSide } from '../utils/clientAstroEngine';
+import { isStaticDeployment, safeFetchWithTimeout } from '../utils/environment';
 import { Heart, Users, CheckCircle2, AlertTriangle, Sparkles } from 'lucide-react';
 
 interface Props {
@@ -38,12 +39,26 @@ export const MatchingView: React.FC<Props> = ({ currentChartRequest }) => {
     // Automatically pre-compute match on initial load so the user sees results immediately
     let isMounted = true;
     const runInitialMatch = async () => {
+      if (isStaticDeployment()) {
+        try {
+          const clientRes = computeMatchClientSide(boy, girl);
+          if (isMounted) setResult(clientRes);
+        } catch (cErr: any) {
+          if (isMounted) setError(cErr.message || 'Error computing compatibility');
+        }
+        return;
+      }
+
       try {
-        const res = await fetch('/v1/match', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ boy_chart: boy, girl_chart: girl }),
-        });
+        const res = await safeFetchWithTimeout(
+          '/v1/match',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ boy_chart: boy, girl_chart: girl }),
+          },
+          1800
+        );
         if (res.ok) {
           const data = await res.json();
           if (isMounted) setResult(data);
@@ -69,12 +84,29 @@ export const MatchingView: React.FC<Props> = ({ currentChartRequest }) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    if (isStaticDeployment()) {
+      try {
+        const clientRes = computeMatchClientSide(boy, girl);
+        setResult(clientRes);
+      } catch (cErr: any) {
+        setError(cErr.message || 'Error computing compatibility');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
-      const res = await fetch('/v1/match', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ boy_chart: boy, girl_chart: girl })
-      });
+      const res = await safeFetchWithTimeout(
+        '/v1/match',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ boy_chart: boy, girl_chart: girl })
+        },
+        1800
+      );
       if (!res.ok) {
         throw new Error(`Match calculation failed (${res.status})`);
       }
@@ -110,12 +142,29 @@ export const MatchingView: React.FC<Props> = ({ currentChartRequest }) => {
     setGirl(g);
     setLoading(true);
     setError(null);
+
+    if (isStaticDeployment()) {
+      try {
+        const clientRes = computeMatchClientSide(b, g);
+        setResult(clientRes);
+      } catch (cErr: any) {
+        setError(cErr.message || 'Error computing compatibility');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
-      const res = await fetch('/v1/match', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ boy_chart: b, girl_chart: g })
-      });
+      const res = await safeFetchWithTimeout(
+        '/v1/match',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ boy_chart: b, girl_chart: g })
+        },
+        1800
+      );
       if (!res.ok) {
         throw new Error(`Match calculation failed (${res.status})`);
       }

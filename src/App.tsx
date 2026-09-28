@@ -19,6 +19,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { PrivacyModal } from './components/PrivacyModal';
 import { exportKundliPDF } from './utils/pdfExport';
 import { computeChartClientSide } from './utils/clientAstroEngine';
+import { isStaticDeployment, safeFetchWithTimeout } from './utils/environment';
 import {
   Sparkles,
   Download,
@@ -29,7 +30,7 @@ import {
   Sun,
   Flame,
   Check,
-  RefreshCw
+  UserPlus
 } from 'lucide-react';
 
 export default function App() {
@@ -75,12 +76,31 @@ export default function App() {
     setLoading(true);
     setError(null);
     setCurrentRequest(req);
+
+    // If on GitHub Pages or static host, skip network fetch entirely for zero-latency execution
+    if (isStaticDeployment()) {
+      try {
+        const clientData = computeChartClientSide(req);
+        setChartData(clientData);
+        setActiveTab('chart');
+      } catch (clientErr: any) {
+        setError(clientErr.message || 'Error computing birth chart');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
-      const res = await fetch('/v1/chart', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(req),
-      });
+      const res = await safeFetchWithTimeout(
+        '/v1/chart',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(req),
+        },
+        2000
+      );
 
       if (!res.ok) {
         throw new Error(`Server returned ${res.status}`);
@@ -90,7 +110,7 @@ export default function App() {
       setChartData(data);
       setActiveTab('chart');
     } catch (err: any) {
-      console.warn('Backend /v1/chart unreachable (static deployment mode). Computing client-side...', err);
+      console.warn('Backend /v1/chart unreachable. Computing client-side...', err);
       try {
         const clientData = computeChartClientSide(req);
         setChartData(clientData);
@@ -146,6 +166,7 @@ export default function App() {
         onOpenPrivacy={() => setIsPrivacyOpen(true)}
         onNewChart={() => {
           setChartData(null);
+          setCurrentRequest(null);
           setActiveTab('form');
         }}
         activeTab={activeTab}
@@ -218,6 +239,16 @@ export default function App() {
 
               {/* Action Buttons: PDF, Share, Settings */}
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('form')}
+                  className="px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-amber-500/40"
+                  title="Enter your own birth details"
+                >
+                  <UserPlus className="w-4 h-4 text-amber-400" />
+                  <span>Enter Your Details</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => exportKundliPDF(chartData)}

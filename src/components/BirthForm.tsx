@@ -1,7 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { BirthChartRequest, GeocodedPlace, AstroSettings } from '../types/astro';
-import { searchCitiesLocally } from '../utils/cities';
-import { MapPin, Clock, Calendar, User, Search, Sparkles, CheckSquare, Square, Zap, Check } from 'lucide-react';
+import { searchCitiesLocally, POPULAR_CITIES } from '../utils/cities';
+import { isStaticDeployment } from '../utils/environment';
+import {
+  MapPin,
+  Clock,
+  Calendar,
+  User,
+  Search,
+  Sparkles,
+  CheckSquare,
+  Square,
+  Zap,
+  RotateCcw,
+  Sliders,
+  ChevronDown,
+  ChevronUp
+} from 'lucide-react';
 
 interface Props {
   onSubmit: (request: BirthChartRequest) => void;
@@ -94,18 +109,18 @@ const PRESETS = [
 ];
 
 export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initialRequest }) => {
-  const [name, setName] = useState(initialRequest?.name || 'Dr. A.P.J. Abdul Kalam');
-  const [dob, setDob] = useState(initialRequest?.dob || '1931-10-15');
-  const [tob, setTob] = useState(initialRequest?.tob || '01:15');
+  const [name, setName] = useState(initialRequest?.name || 'Rahul Sharma');
+  const [dob, setDob] = useState(initialRequest?.dob || '1995-10-24');
+  const [tob, setTob] = useState(initialRequest?.tob || '18:30');
   const [timeUnknown, setTimeUnknown] = useState(initialRequest?.time_unknown || false);
-  const [placeQuery, setPlaceQuery] = useState(initialRequest?.place || 'Rameswaram, Tamil Nadu, India');
+  const [placeQuery, setPlaceQuery] = useState(initialRequest?.place || 'New Delhi, Delhi, India');
   const [selectedPlace, setSelectedPlace] = useState<GeocodedPlace>({
-    display_name: initialRequest?.place || 'Rameswaram, Tamil Nadu, India',
-    city: 'Rameswaram',
-    state: 'Tamil Nadu',
+    display_name: initialRequest?.place || 'New Delhi, Delhi, India',
+    city: 'New Delhi',
+    state: 'Delhi',
     country: 'India',
-    latitude: initialRequest?.latitude ?? 9.2876,
-    longitude: initialRequest?.longitude ?? 79.3129,
+    latitude: initialRequest?.latitude ?? 28.6139,
+    longitude: initialRequest?.longitude ?? 77.2090,
     timezone: initialRequest?.timezone || 'Asia/Kolkata',
   });
 
@@ -113,6 +128,18 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
   const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [consentGiven, setConsentGiven] = useState(true);
+
+  // Manual Coordinates Override for power users entering custom locations
+  const [showManualCoords, setShowManualCoords] = useState(false);
+  const [customLat, setCustomLat] = useState<string>(
+    initialRequest?.latitude ? initialRequest.latitude.toString() : '28.6139'
+  );
+  const [customLon, setCustomLon] = useState<string>(
+    initialRequest?.longitude ? initialRequest.longitude.toString() : '77.2090'
+  );
+  const [customTz, setCustomTz] = useState<string>(
+    initialRequest?.timezone || 'Asia/Kolkata'
+  );
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -132,9 +159,32 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
           longitude: initialRequest.longitude ?? 77.2090,
           timezone: initialRequest.timezone || 'Asia/Kolkata',
         });
+        if (initialRequest.latitude) setCustomLat(initialRequest.latitude.toString());
+        if (initialRequest.longitude) setCustomLon(initialRequest.longitude.toString());
+        if (initialRequest.timezone) setCustomTz(initialRequest.timezone);
       }
     }
   }, [initialRequest]);
+
+  const handleClearForm = () => {
+    setName('');
+    const today = new Date().toISOString().split('T')[0];
+    setDob(today);
+    setTob('12:00');
+    setTimeUnknown(false);
+    setPlaceQuery('');
+    setSelectedPlace({
+      display_name: 'New Delhi, Delhi, India',
+      city: 'New Delhi',
+      state: 'Delhi',
+      country: 'India',
+      latitude: 28.6139,
+      longitude: 77.2090,
+      timezone: 'Asia/Kolkata',
+    });
+    setPlaceResults([]);
+    setShowDropdown(false);
+  };
 
   const handlePlaceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -144,44 +194,37 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
       clearTimeout(searchTimeoutRef.current);
     }
 
-    if (val.trim().length >= 2) {
-      // 1. Instant local database lookup (zero-latency offline support)
+    if (val.trim().length >= 1) {
+      // 1. Instant local database lookup (zero-latency offline & GitHub Pages support)
       const localMatches = searchCitiesLocally(val);
       if (localMatches.length > 0) {
         setPlaceResults(localMatches);
         setShowDropdown(true);
       }
 
+      // If static deployment (GitHub Pages), do NOT try backend /v1/geocode to prevent network errors
+      if (isStaticDeployment()) {
+        return;
+      }
+
       setIsSearchingPlaces(true);
       searchTimeoutRef.current = setTimeout(async () => {
         try {
-          // Attempt backend proxy first
           let results: GeocodedPlace[] = [];
           try {
-            const res = await fetch(`/v1/geocode?q=${encodeURIComponent(val)}`);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 1500);
+            const res = await fetch(`/v1/geocode?q=${encodeURIComponent(val)}`, {
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
             if (res.ok) {
               const data = await res.json();
               results = data.results || [];
             }
           } catch {
-            // Static deployment fallback to OpenStreetMap Nominatim directly
-            try {
-              const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&addressdetails=1&limit=5`);
-              if (res.ok) {
-                const items = await res.json();
-                results = items.map((item: any) => ({
-                  display_name: item.display_name,
-                  city: item.address?.city || item.address?.town || item.address?.village || item.display_name.split(',')[0],
-                  state: item.address?.state,
-                  country: item.address?.country,
-                  latitude: parseFloat(item.lat),
-                  longitude: parseFloat(item.lon),
-                  timezone: 'Asia/Kolkata',
-                }));
-              }
-            } catch {
-              // Ignore network error on static
-            }
+            // Static or offline fallback to local matches
+            results = localMatches;
           }
 
           if (results.length > 0) {
@@ -194,7 +237,7 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
         } finally {
           setIsSearchingPlaces(false);
         }
-      }, 350);
+      }, 300);
     } else {
       setPlaceResults([]);
       setShowDropdown(false);
@@ -204,6 +247,9 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
   const selectPlace = (place: GeocodedPlace) => {
     setSelectedPlace(place);
     setPlaceQuery(place.display_name);
+    setCustomLat(place.latitude.toString());
+    setCustomLon(place.longitude.toString());
+    setCustomTz(place.timezone);
     setShowDropdown(false);
   };
 
@@ -213,6 +259,9 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
     setTob(preset.tob);
     setTimeUnknown(false);
     setPlaceQuery(preset.place);
+    setCustomLat(preset.latitude.toString());
+    setCustomLon(preset.longitude.toString());
+    setCustomTz(preset.timezone);
     const placeObj: GeocodedPlace = {
       display_name: preset.place,
       city: preset.place.split(',')[0],
@@ -245,14 +294,39 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
       return;
     }
 
+    // Resolve coordinates
+    let finalLat = selectedPlace.latitude;
+    let finalLon = selectedPlace.longitude;
+    let finalTz = selectedPlace.timezone || 'Asia/Kolkata';
+
+    if (showManualCoords) {
+      const parsedLat = parseFloat(customLat);
+      const parsedLon = parseFloat(customLon);
+      if (!isNaN(parsedLat)) finalLat = parsedLat;
+      if (!isNaN(parsedLon)) finalLon = parsedLon;
+      if (customTz.trim()) finalTz = customTz.trim();
+    } else if (placeQuery.trim() && selectedPlace.display_name !== placeQuery) {
+      // Check if user typed a city without clicking the dropdown item
+      const matches = searchCitiesLocally(placeQuery);
+      if (matches.length > 0) {
+        finalLat = matches[0].latitude;
+        finalLon = matches[0].longitude;
+        finalTz = matches[0].timezone;
+      }
+    }
+
+    // Safety checks against NaN/undefined
+    if (!Number.isFinite(finalLat)) finalLat = 28.6139;
+    if (!Number.isFinite(finalLon)) finalLon = 77.2090;
+
     onSubmit({
-      name,
+      name: name.trim() || 'Native',
       dob,
       tob: timeUnknown ? null : tob,
-      place: selectedPlace.display_name || placeQuery,
-      latitude: selectedPlace.latitude,
-      longitude: selectedPlace.longitude,
-      timezone: selectedPlace.timezone,
+      place: placeQuery.trim() || selectedPlace.display_name || 'New Delhi, India',
+      latitude: finalLat,
+      longitude: finalLon,
+      timezone: finalTz,
       time_unknown: timeUnknown,
       settings,
       consent_given: consentGiven,
@@ -261,7 +335,7 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
 
   return (
     <div className="w-full max-w-4xl mx-auto rounded-2xl border border-amber-500/20 bg-slate-900/80 backdrop-blur-md p-6 sm:p-8 shadow-2xl space-y-6">
-      {/* Header & Quick 1-Click Sample Fill */}
+      {/* Header & Quick Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
         <div>
           <h2 className="font-serif text-2xl font-bold text-slate-100 flex items-center gap-2">
@@ -269,19 +343,31 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
             Vedic Birth Chart (Kundli)
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Computed with Swiss Ephemeris • Lahiri Sidereal Zodiac • Whole Sign Bhavas
+            High-Precision Swiss Ephemeris • Lahiri Sidereal Zodiac • Whole Sign Bhavas
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => applyPresetAndCompute(PRESETS[0])}
-          disabled={loading}
-          className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all cursor-pointer"
-        >
-          <Zap className="w-3.5 h-3.5" />
-          <span>Auto-Fill Sample & Generate</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleClearForm}
+            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs flex items-center gap-1.5 border border-slate-700 transition-all cursor-pointer"
+            title="Clear all fields to enter your own birth details"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+            <span>Clear / Enter Your Own</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => applyPresetAndCompute(PRESETS[0])}
+            disabled={loading}
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>Load Sample Profile</span>
+          </button>
+        </div>
       </div>
 
       {/* Preset Pill Bar: One click immediately fills and computes! */}
@@ -289,7 +375,7 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
             <Zap className="w-3.5 h-3.5 text-amber-400" />
-            One-Click Sample Profiles (Click any to load & compute instantly):
+            Or pick a quick sample profile:
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -411,16 +497,70 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
         </div>
 
         {/* Selected Coordinates & Timezone Info Pill */}
-        <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 bg-slate-950/40 p-3 rounded-xl border border-slate-800/80">
-          <div className="flex items-center gap-4 font-mono">
-            <span>Lat: <b className="text-slate-200">{selectedPlace.latitude.toFixed(4)}°</b></span>
-            <span>Lon: <b className="text-slate-200">{selectedPlace.longitude.toFixed(4)}°</b></span>
-            <span>TZ: <b className="text-amber-300 font-sans">{selectedPlace.timezone}</b></span>
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 bg-slate-950/40 p-3 rounded-xl border border-slate-800/80">
+            <div className="flex items-center gap-4 font-mono">
+              <span>Lat: <b className="text-slate-200">{Number(showManualCoords ? customLat : selectedPlace.latitude).toFixed(4)}°</b></span>
+              <span>Lon: <b className="text-slate-200">{Number(showManualCoords ? customLon : selectedPlace.longitude).toFixed(4)}°</b></span>
+              <span>TZ: <b className="text-amber-300 font-sans">{showManualCoords ? customTz : selectedPlace.timezone}</b></span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowManualCoords(!showManualCoords)}
+                className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-semibold transition-colors cursor-pointer"
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>{showManualCoords ? 'Hide Custom Coordinates' : 'Edit Exact Coordinates'}</span>
+                {showManualCoords ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+
+              <div className="text-[11px] text-slate-500 hidden sm:block">
+                Ayanamsa: <b className="text-amber-400 capitalize">{settings.ayanamsa}</b> • House: <b className="text-slate-300 capitalize">{settings.house_system.replace('_', ' ')}</b>
+              </div>
+            </div>
           </div>
 
-          <div className="text-[11px] text-slate-500">
-            Ayanamsa: <b className="text-amber-400 capitalize">{settings.ayanamsa}</b> • House: <b className="text-slate-300 capitalize">{settings.house_system.replace('_', ' ')}</b>
-          </div>
+          {/* Manual Coordinates Collapsible Fields */}
+          {showManualCoords && (
+            <div className="p-4 rounded-xl bg-slate-950/80 border border-amber-500/30 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs animate-in fade-in">
+              <div className="space-y-1">
+                <label className="font-semibold text-slate-300">Latitude (°N, positive / °S, negative)</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={customLat}
+                  onChange={(e) => setCustomLat(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 font-mono focus:outline-none focus:border-amber-500"
+                  placeholder="e.g. 28.6139"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-slate-300">Longitude (°E, positive / °W, negative)</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={customLon}
+                  onChange={(e) => setCustomLon(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 font-mono focus:outline-none focus:border-amber-500"
+                  placeholder="e.g. 77.2090"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-slate-300">IANA Timezone</label>
+                <input
+                  type="text"
+                  value={customTz}
+                  onChange={(e) => setCustomTz(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 font-sans focus:outline-none focus:border-amber-500"
+                  placeholder="e.g. Asia/Kolkata"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* India DPDP Act 2023 Explicit Consent Checkbox */}

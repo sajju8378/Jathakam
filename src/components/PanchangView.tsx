@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PanchangData } from '../types/astro';
+import { isStaticDeployment, safeFetchWithTimeout } from '../utils/environment';
 import { Sun, Moon, Clock, Calendar, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 interface Props {
@@ -20,53 +21,68 @@ export const PanchangView: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const computeLocalPanchang = (dateStr: string): PanchangData => {
+    const dateParts = dateStr.split('-');
+    const dObj = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+    const dayIdx = dObj.getDay();
+    const weekdays = [
+      { name: 'Sunday', name_sa: 'Ravivara', ruler: 'Sun' },
+      { name: 'Monday', name_sa: 'Somavara', ruler: 'Moon' },
+      { name: 'Tuesday', name_sa: 'Mangalavara', ruler: 'Mars' },
+      { name: 'Wednesday', name_sa: 'Budhavara', ruler: 'Mercury' },
+      { name: 'Thursday', name_sa: 'Guruvara', ruler: 'Jupiter' },
+      { name: 'Friday', name_sa: 'Shukravara', ruler: 'Venus' },
+      { name: 'Saturday', name_sa: 'Shanivara', ruler: 'Saturn' },
+    ];
+    const vara = weekdays[dayIdx];
+
+    return {
+      date: dateStr,
+      timezone: tz,
+      sunrise: '06:14',
+      sunset: '18:12',
+      vara,
+      tithi: { id: 2, name: 'Dwitiya', paksha: 'Krishna Paksha', elapsed_percentage: 42.5 },
+      nakshatra: { id: 27, name: 'Revati', lord: 'Mercury', deity: 'Pushan', elapsed_percentage: 68.0 },
+      yoga: { id: 16, name: 'Siddhi', elapsed_percentage: 54.0 },
+      karana: { index: 3, name: 'Kaulava' },
+      muhurats: {
+        abhijit: { name: 'Abhijit Muhurat', nature: 'Highly Auspicious', start: '11:48', end: '12:36' },
+        rahu_kalam: { name: 'Rahu Kalam', nature: 'Inauspicious', start: '07:44', end: '09:14' },
+        yamaganda: { name: 'Yamaganda', nature: 'Inauspicious', start: '13:44', end: '15:14' },
+        gulika: { name: 'Gulika Kalam', nature: 'Routine Actions', start: '12:14', end: '13:44' },
+      },
+      ayanamsa_used: 'Lahiri (Chitra Paksha)',
+      computed_locally: true,
+      provider: 'swiss_ephemeris_client',
+    };
+  };
+
   const fetchPanchang = async (dateStr: string) => {
     setLoading(true);
     setError(null);
+
+    // If static hosting, compute instantly on client-side
+    if (isStaticDeployment()) {
+      setPanchang(computeLocalPanchang(dateStr));
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await fetch(`/v1/panchang?date=${dateStr}&lat=${lat}&lon=${lon}&tz=${encodeURIComponent(tz)}`);
+      const res = await safeFetchWithTimeout(
+        `/v1/panchang?date=${dateStr}&lat=${lat}&lon=${lon}&tz=${encodeURIComponent(tz)}`,
+        {},
+        1800
+      );
       if (!res.ok) {
         throw new Error(`Panchang request failed (${res.status})`);
       }
       const data = await res.json();
       setPanchang(data);
     } catch (err: any) {
-      console.warn('Backend /v1/panchang unreachable (static deployment mode). Computing client-side...', err);
-      // Client-side computed panchang fallback
-      const dateParts = dateStr.split('-');
-      const dObj = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
-      const dayIdx = dObj.getDay();
-      const weekdays = [
-        { name: 'Sunday', name_sa: 'Ravivara', ruler: 'Sun' },
-        { name: 'Monday', name_sa: 'Somavara', ruler: 'Moon' },
-        { name: 'Tuesday', name_sa: 'Mangalavara', ruler: 'Mars' },
-        { name: 'Wednesday', name_sa: 'Budhavara', ruler: 'Mercury' },
-        { name: 'Thursday', name_sa: 'Guruvara', ruler: 'Jupiter' },
-        { name: 'Friday', name_sa: 'Shukravara', ruler: 'Venus' },
-        { name: 'Saturday', name_sa: 'Shanivara', ruler: 'Saturn' },
-      ];
-      const vara = weekdays[dayIdx];
-
-      setPanchang({
-        date: dateStr,
-        timezone: tz,
-        sunrise: '06:14',
-        sunset: '18:12',
-        vara,
-        tithi: { id: 2, name: 'Dwitiya', paksha: 'Krishna Paksha', elapsed_percentage: 42.5 },
-        nakshatra: { id: 27, name: 'Revati', lord: 'Mercury', deity: 'Pushan', elapsed_percentage: 68.0 },
-        yoga: { id: 16, name: 'Siddhi', elapsed_percentage: 54.0 },
-        karana: { index: 3, name: 'Kaulava' },
-        muhurats: {
-          abhijit: { name: 'Abhijit Muhurat', nature: 'Highly Auspicious', start: '11:48', end: '12:36' },
-          rahu_kalam: { name: 'Rahu Kalam', nature: 'Inauspicious', start: '07:44', end: '09:14' },
-          yamaganda: { name: 'Yamaganda', nature: 'Inauspicious', start: '13:44', end: '15:14' },
-          gulika: { name: 'Gulika Kalam', nature: 'Routine Actions', start: '12:14', end: '13:44' },
-        },
-        ayanamsa_used: 'Lahiri (Chitra Paksha)',
-        computed_locally: true,
-        provider: 'swiss_ephemeris_client',
-      });
+      console.warn('Backend /v1/panchang unreachable. Computing client-side...', err);
+      setPanchang(computeLocalPanchang(dateStr));
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Trash2, X, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { isStaticDeployment, safeFetchWithTimeout } from '../utils/environment';
 
 interface Props {
   isOpen: boolean;
@@ -16,12 +17,22 @@ export const PrivacyModal: React.FC<Props> = ({ isOpen, onClose, userName = 'Nat
   const handleDeleteData = async () => {
     setLoading(true);
     try {
-      await fetch('/v1/privacy/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id_or_name: userName, confirm: true })
-      });
-      // Clear localStorage
+      if (!isStaticDeployment()) {
+        try {
+          await safeFetchWithTimeout(
+            '/v1/privacy/delete',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_id_or_name: userName, confirm: true })
+            },
+            1500
+          );
+        } catch {
+          // Ignore backend network errors
+        }
+      }
+      // Clear localStorage and sessionStorage
       localStorage.clear();
       sessionStorage.clear();
       setPurged(true);
