@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # 1. Vedic Astrology FastAPI Engine
+  astro-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend
+    container_name: jyotishveda-api
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://jyotish_user:jyotish_password@postgres:5432/jyotish_db
+      - PROKERALA_CLIENT_ID=${PROKERALA_CLIENT_ID:-}
+      - PROKERALA_CLIENT_SECRET=${PROKERALA_CLIENT_SECRET:-}
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+
+  # 2. React + TypeScript Web Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend
+    container_name: jyotishveda-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_PROXY=http://astro-api:8001
+    depends_on:
+      - astro-api
+    restart: unless-stopped
+
+  # 3. Redis Cache (Panchang 24h & Geocoding)
+  redis:
+    image: redis:7-alpine
+    container_name: jyotishveda-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # 4. PostgreSQL Database (Users & Saved Charts with Encryption)
+  postgres:
+    image: postgres:16-alpine
+    container_name: jyotishveda-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: jyotish_user
+      POSTGRES_PASSWORD: jyotish_password
+      POSTGRES_DB: jyotish_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  postgres_data:

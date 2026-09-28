@@ -1,0 +1,6 @@
+{
+  "name": "JyotishVeda Kundli & Panchang Engine",
+  "description": "Production Vedic astrology platform featuring high-precision Swiss Ephemeris Kundli, divisional vargas, Vimshottari dashas, dosha analysis, Ashtakoota compatibility, and swappable Prokerala Panchang integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

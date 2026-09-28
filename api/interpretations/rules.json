@@ -1,0 +1,46 @@
+{
+  "disclaimer": "Astrology (Jyotish) is an ancient, traditional, and symbolic philosophical system intended solely for self-reflection, spiritual exploration, and personal contemplation. It does not constitute scientific fact, medical diagnosis, psychological counseling, legal advice, or financial planning. Always seek qualified professional guidance for health, legal, and financial decisions.",
+  "ascendants": {
+    "1": "Mesha (Aries): Dynamic, pioneering, courageous, leadership-oriented, independent, quick to action.",
+    "2": "Vrishabha (Taurus): Steadfast, aesthetic, grounded, value-driven, patient, focused on stability and resources.",
+    "3": "Mithuna (Gemini): Inquisitive, articulate, versatile, mentally agile, communicative, fond of learning and networking.",
+    "4": "Karka (Cancer): Emotionally intuitive, nurturing, deeply protective of home and family, empathetic, reflective.",
+    "5": "Simha (Leo): Magnanimous, regal, creative, authoritative, passionate, natural sovereign presence.",
+    "6": "Kanya (Virgo): Analytical, discerning, detail-oriented, service-minded, striving for improvement and precision.",
+    "7": "Tula (Libra): Diplomatic, balance-seeking, refined, cooperative, focused on partnership and justice.",
+    "8": "Vrishchika (Scorpio): Penetrative, intense, transformative, investigative, emotionally resilient, mysterious.",
+    "9": "Dhanu (Sagittarius): Philosophical, optimistic, truth-seeking, expansive, righteous, inclined toward higher knowledge.",
+    "10": "Makara (Capricorn): Disciplined, pragmatic, ambitious, perseverant, structured, oriented toward tangible worldly legacy.",
+    "11": "Kumbha (Aquarius): Visionary, humanitarian, intellectual, unorthodox, connected with community and collective progress.",
+    "12": "Meena (Pisces): Compassionate, contemplative, imaginative, spiritually inclined, empathetic, transcendental."
+  },
+  "planet_in_house": {
+    "Sun_1": "Strong vitality, dignified bearing, natural leadership, and high self-esteem; benefits from humility.",
+    "Sun_10": "Digbala (directional strength). Supreme authority, rapid professional prominence, public recognition.",
+    "Moon_1": "Charming personality, sensitive constitution, emotionally receptive, deeply influenced by mother.",
+    "Moon_4": "Digbala (directional strength). Warm home life, emotional contentment, abundant conveyances, deep motherly bond.",
+    "Mars_1": "Courageous, assertive, athletic vigor, quick reflexes, high enterprise, potential Kuja Dosha if unmitigated.",
+    "Mars_10": "Digbala (directional strength). Outstanding executive drive, commanding authority, triumph over obstacles.",
+    "Mercury_1": "Digbala (directional strength). Brilliant intellect, youthful charisma, sharp wit, communicative eloquence.",
+    "Mercury_10": "Excellent administrative and analytical faculties, commercial success, literary or media talent.",
+    "Jupiter_1": "Digbala (directional strength). Divine blessings, profound moral wisdom, revered status, generous demeanor.",
+    "Jupiter_9": "Karako Bhavo Nashaya nuanced: high dharmic devotion, fortunate preceptors, philosophical renown.",
+    "Venus_4": "Digbala (directional strength). Luxurious residence, artistic elegance, comfort in conveyances, joyful heart.",
+    "Venus_7": "Charming marital partner, appreciation for beauty, social magnetism, mutual romantic appreciation.",
+    "Saturn_7": "Digbala (directional strength). Mature, serious, enduring partnerships; delayed but long-lasting stability.",
+    "Saturn_10": "Rise to high responsibility through patient labor, sustained grit, eventual public eminence.",
+    "Rahu_10": "Unconventional professional rise, foreign interactions, ambition, rapid ascension in modern industries.",
+    "Ketu_12": "Moksha Karaka in Moksha house. High spiritual detachment, intuitive contemplation, transcendental liberation."
+  },
+  "mahadasha_guidance": {
+    "Ketu": "7-Year Spiritual Awakening: Time for detachment from trivialities, internal healing, spiritual pilgrimages, and developing intuitive wisdom.",
+    "Venus": "20-Year Flourishing & Affluence: Fosters romance, marital union, creative endeavors, luxury conveyances, artistic refinement, and social harmony.",
+    "Sun": "6-Year Power & Authority: Amplifies career ambition, father's status, public recognition, self-confidence, and connection with governance.",
+    "Moon": "10-Year Emotional Growth: Cultivates inner peace, maternal connections, public outreach, mental sensitivity, and home prosperity.",
+    "Mars": "7-Year Courage & Action: High energy period for physical ventures, property acquisition, overcoming obstacles, and athletic or executive pursuits.",
+    "Rahu": "18-Year Material Expansion: Intense worldly ambition, unconventional breaks, foreign connections, rapid modernization, and worldly trials.",
+    "Jupiter": "16-Year Wisdom & Fortune: Period of auspicious growth, progeny, higher education, spiritual mentorship, ethical standing, and abundance.",
+    "Saturn": "19-Year Discipline & Foundation: Deep karmic maturation, structured perseverance, enduring achievements built through honest, steadfast labor.",
+    "Mercury": "17-Year Intellect & Enterprise: Sharpened commercial acumen, communicative brilliance, academic advancement, networking, and versatility."
+  }
+}

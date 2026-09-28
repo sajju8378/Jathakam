@@ -1,0 +1,140 @@
+{
+  "info": {
+    "name": "JyotishVeda Astrology API",
+    "_postman_id": "9a4dc265-887a-4156-a770-325245452d70",
+    "description": "API collection for high-precision Vedic astrology calculations using Swiss Ephemeris and swappable Panchang adapter.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. System Health & Ephemeris Version",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/v1/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "health"]
+        }
+      }
+    },
+    {
+      "name": "2. Astrological Conventions & Meta",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/v1/meta",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "meta"]
+        }
+      }
+    },
+    {
+      "name": "3. Geocode City Autocomplete",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/v1/geocode?q=Varanasi",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "geocode"],
+          "query": [
+            {
+              "key": "q",
+              "value": "Varanasi"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "4. Compute Vedic Birth Chart (Kundli)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Mahatma Gandhi\",\n  \"dob\": \"1869-10-02\",\n  \"tob\": \"07:12\",\n  \"place\": \"Porbandar, Gujarat, India\",\n  \"latitude\": 21.6417,\n  \"longitude\": 69.6293,\n  \"timezone\": \"Asia/Kolkata\",\n  \"time_unknown\": false,\n  \"settings\": {\n    \"ayanamsa\": \"lahiri\",\n    \"house_system\": \"whole_sign\",\n    \"node_type\": \"mean\"\n  },\n  \"consent_given\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v1/chart",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "chart"]
+        }
+      }
+    },
+    {
+      "name": "5. Kundli Milan (36 Gunas Ashtakoota)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"boy_chart\": {\n    \"name\": \"Boy\",\n    \"dob\": \"1992-04-14\",\n    \"tob\": \"09:30\",\n    \"place\": \"New Delhi\",\n    \"latitude\": 28.6139,\n    \"longitude\": 77.2090,\n    \"timezone\": \"Asia/Kolkata\"\n  },\n  \"girl_chart\": {\n    \"name\": \"Girl\",\n    \"dob\": \"1994-08-20\",\n    \"tob\": \"15:45\",\n    \"place\": \"Mumbai\",\n    \"latitude\": 19.0760,\n    \"longitude\": 72.8777,\n    \"timezone\": \"Asia/Kolkata\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v1/match",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "match"]
+        }
+      }
+    },
+    {
+      "name": "6. Daily Panchang & Muhurats",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/v1/panchang?date=2026-09-28&lat=28.6139&lon=77.2090&tz=Asia/Kolkata",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "panchang"],
+          "query": [
+            { "key": "date", "value": "2026-09-28" },
+            { "key": "lat", "value": "28.6139" },
+            { "key": "lon", "value": "77.2090" },
+            { "key": "tz", "value": "Asia/Kolkata" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "7. DPDP Act Right to Erasure (Delete Data)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user_id_or_name\": \"Native\",\n  \"confirm\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v1/privacy/delete",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "privacy", "delete"]
+        }
+      }
+    }
+  ]
+}
