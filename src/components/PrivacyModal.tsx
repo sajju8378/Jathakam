@@ -19,8 +19,9 @@ export const PrivacyModal: React.FC<Props> = ({ isOpen, onClose, userName = 'Nat
     try {
       if (!isStaticDeployment()) {
         try {
+          const apiBase = import.meta.env.VITE_API_URL || '';
           await safeFetchWithTimeout(
-            '/v1/privacy/delete',
+            `${apiBase}/v1/privacy/delete`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },

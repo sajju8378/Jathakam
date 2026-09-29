@@ -1461,11 +1461,26 @@ export function searchCitiesLocally(query: string): GeocodedPlace[] {
     return cityMatch || displayMatch || stateMatch || countryMatch || aliasMatch;
   });
 
-  // Sort: Exact startsWith first, then alphabetical
+  // Sort: Exact match first, then city startsWith, then alias startsWith, then alphabetical
   return matches
     .sort((a, b) => {
-      const aStarts = a.city.toLowerCase().startsWith(q) || a.display_name.toLowerCase().startsWith(q);
-      const bStarts = b.city.toLowerCase().startsWith(q) || b.display_name.toLowerCase().startsWith(q);
+      const aExact = a.city.toLowerCase() === q;
+      const bExact = b.city.toLowerCase() === q;
+      if (aExact && !bExact) return -1;
+      if (!aExact && bExact) return 1;
+
+      const aCityStarts = a.city.toLowerCase().startsWith(q);
+      const bCityStarts = b.city.toLowerCase().startsWith(q);
+      if (aCityStarts && !bCityStarts) return -1;
+      if (!aCityStarts && bCityStarts) return 1;
+
+      const aAliasStarts = a.aliases?.some((al) => al.toLowerCase().startsWith(q));
+      const bAliasStarts = b.aliases?.some((al) => al.toLowerCase().startsWith(q));
+      if (aAliasStarts && !bAliasStarts) return -1;
+      if (!aAliasStarts && bAliasStarts) return 1;
+
+      const aStarts = a.display_name.toLowerCase().startsWith(q);
+      const bStarts = b.display_name.toLowerCase().startsWith(q);
       if (aStarts && !bStarts) return -1;
       if (!aStarts && bStarts) return 1;
       return 0;

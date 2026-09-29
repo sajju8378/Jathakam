@@ -94,8 +94,9 @@ export default function App() {
     }
 
     try {
+      const apiBase = import.meta.env.VITE_API_URL || '';
       const res = await safeFetchWithTimeout(
-        '/v1/chart',
+        `${apiBase}/v1/chart`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

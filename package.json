@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node start-dev.js",
+    "dev": "vite",
     "build": "node scripts/build-github-pages.js",
     "lint": "tsc --noEmit"
   },

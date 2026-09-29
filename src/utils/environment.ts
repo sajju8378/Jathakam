@@ -1,23 +1,14 @@
 /**
- * Environment detection and network utilities for standalone static (GitHub Pages)
- * vs full-stack development modes.
+ * Environment detection and network utilities for standalone client-side execution
+ * (GitHub Pages, AI Studio preview, Vercel, offline) vs dedicated backend API modes.
  */
 
 export function isStaticDeployment(): boolean {
-  if (typeof window === 'undefined') return false;
-  const host = window.location.hostname;
-  return (
-    host.includes('github.io') ||
-    window.location.protocol === 'file:' ||
-    host.includes('pages.dev') ||
-    host.includes('vercel.app') ||
-    host.includes('netlify.app') ||
-    // Static hosting with no port specified (excluding local and dev cloud environments)
-    (!host.includes('localhost') &&
-      !host.includes('127.0.0.1') &&
-      !host.includes('run.app') &&
-      !host.includes('0.0.0.0'))
-  );
+  if (typeof window === 'undefined') return true;
+  // If a dedicated backend URL is explicitly configured, use network API mode
+  if (import.meta.env.VITE_API_URL) return false;
+  // Default to standalone client-side calculation engine
+  return true;
 }
 
 export async function safeFetchWithTimeout(

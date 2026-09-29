@@ -70,8 +70,9 @@ export const PanchangView: React.FC<Props> = ({
     }
 
     try {
+      const apiBase = import.meta.env.VITE_API_URL || '';
       const res = await safeFetchWithTimeout(
-        `/v1/panchang?date=${dateStr}&lat=${lat}&lon=${lon}&tz=${encodeURIComponent(tz)}`,
+        `${apiBase}/v1/panchang?date=${dateStr}&lat=${lat}&lon=${lon}&tz=${encodeURIComponent(tz)}`,
         {},
         1800
       );

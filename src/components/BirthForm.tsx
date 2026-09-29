@@ -188,6 +188,29 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
     setShowDropdown(false);
   };
 
+  const handlePlaceFocus = () => {
+    if (placeQuery.trim().length >= 1) {
+      const matches = searchCitiesLocally(placeQuery);
+      setPlaceResults(matches);
+    } else {
+      setPlaceResults(POPULAR_CITIES.slice(0, 8));
+    }
+    setShowDropdown(true);
+  };
+
+  const handlePlaceBlur = () => {
+    // Delay closing so click event on dropdown item registers first
+    setTimeout(() => {
+      setShowDropdown(false);
+      if (placeQuery.trim() && selectedPlace.display_name !== placeQuery) {
+        const matches = searchCitiesLocally(placeQuery);
+        if (matches.length > 0) {
+          selectPlace(matches[0]);
+        }
+      }
+    }, 250);
+  };
+
   const handlePlaceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setPlaceQuery(val);
@@ -199,10 +222,8 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
     if (val.trim().length >= 1) {
       // 1. Instant local database lookup (zero-latency for Korutla, Metpally, and hundreds of towns)
       const localMatches = searchCitiesLocally(val);
-      if (localMatches.length > 0) {
-        setPlaceResults(localMatches);
-        setShowDropdown(true);
-      }
+      setPlaceResults(localMatches);
+      setShowDropdown(true);
 
       // 2. Global search across all towns & villages (Open-Meteo + Nominatim) with 200ms debounce
       setIsSearchingPlaces(true);
@@ -227,8 +248,8 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
         }
       }, 200);
     } else {
-      setPlaceResults([]);
-      setShowDropdown(false);
+      setPlaceResults(POPULAR_CITIES.slice(0, 8));
+      setShowDropdown(true);
     }
   };
 
@@ -459,7 +480,8 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
                 type="text"
                 value={placeQuery}
                 onChange={handlePlaceChange}
-                onFocus={() => placeResults.length > 0 && setShowDropdown(true)}
+                onFocus={handlePlaceFocus}
+                onBlur={handlePlaceBlur}
                 className="w-full pl-3 pr-8 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-100 focus:outline-none focus:border-amber-500 font-medium"
                 placeholder="Enter any town (e.g. Korutla, Metpally, Jagtial...)"
                 required
@@ -469,6 +491,37 @@ export const BirthForm: React.FC<Props> = ({ onSubmit, settings, loading, initia
               ) : (
                 <Search className="w-4 h-4 text-slate-500 absolute right-2.5 top-2.5 pointer-events-none" />
               )}
+            </div>
+
+            {/* Quick Town Suggestions Chips */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-[11px]">
+              <span className="text-slate-500 font-medium mr-1">Popular:</span>
+              {[
+                POPULAR_CITIES[0], // Korutla
+                POPULAR_CITIES[1], // Metpally
+                POPULAR_CITIES[2], // Jagtial
+                POPULAR_CITIES[3], // Karimnagar
+                POPULAR_CITIES[4], // Nizamabad
+                POPULAR_CITIES[5], // Armoor
+                POPULAR_CITIES.find(c => c.city === 'Hyderabad') || POPULAR_CITIES[0],
+                POPULAR_CITIES.find(c => c.city === 'New Delhi') || POPULAR_CITIES[0],
+              ].map((p, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault(); // prevent blur
+                    selectPlace(p);
+                  }}
+                  className={`px-2 py-0.5 rounded-md border text-[11px] transition-colors cursor-pointer ${
+                    selectedPlace.city.toLowerCase() === p.city.toLowerCase()
+                      ? 'bg-amber-500 text-slate-950 font-bold border-amber-400'
+                      : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-amber-300 hover:border-slate-700'
+                  }`}
+                >
+                  {p.city}
+                </button>
+              ))}
             </div>
 
             {/* Geocode Results Dropdown */}

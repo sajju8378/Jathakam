@@ -51,8 +51,9 @@ export const MatchingView: React.FC<Props> = ({ currentChartRequest }) => {
       }
 
       try {
+        const apiBase = import.meta.env.VITE_API_URL || '';
         const res = await safeFetchWithTimeout(
-          '/v1/match',
+          `${apiBase}/v1/match`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -116,8 +117,9 @@ export const MatchingView: React.FC<Props> = ({ currentChartRequest }) => {
     }
 
     try {
+      const apiBase = import.meta.env.VITE_API_URL || '';
       const res = await safeFetchWithTimeout(
-        '/v1/match',
+        `${apiBase}/v1/match`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -174,8 +176,9 @@ export const MatchingView: React.FC<Props> = ({ currentChartRequest }) => {
     }
 
     try {
+      const apiBase = import.meta.env.VITE_API_URL || '';
       const res = await safeFetchWithTimeout(
-        '/v1/match',
+        `${apiBase}/v1/match`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
